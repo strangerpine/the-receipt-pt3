@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Receipt — Interactive Art Installation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&family=Caveat:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --paper: #f5f0e8;
+    --paper-dark: #e8e0d0;
+    --ink: #1a1a1a;
+    --ink-light: #555;
+    --red: #8b1a1a;
+    --red-glow: #c0392b;
+    --burn: #2a1a0a;
+  }
+
+  body {
+    background: #0a0a0a;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* ============ INTRO OVERLAY ============ */
+  .intro-overlay {
+    position: fixed;
+    inset: 0;
+    background: #0a0a0a;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    transition: opacity 1.5s ease, visibility 1.5s ease;
+  }
+  .intro-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .intro-text {
+    font-family: 'Caveat', cursive;
+    color: var(--red);
+    font-size: 1.4rem;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    animation: fadeInSlow 3s ease 0.5s forwards;
+    text-align: center;
+    padding: 0 2rem;
+    line-height: 1.8;
+  }
+  .intro-cta {
+    font-family: 'Courier Prime', monospace;
+    color: #555;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-top: 3rem;
+    opacity: 0;
+    animation: fadeInSlow 2s ease 4s forwards;
+    cursor: pointer;
+    padding: 0.8rem 2rem;
+    border: 1px solid #333;
+    transition: all 0.4s ease;
+  }
+  .intro-cta:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  @keyframes fadeInSlow { to { opacity: 1; } }
+
+  /* ============ RUNNING TOTAL BAR ============ */
+  .running-total-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    font-family: 'Courier Prime', monospace;
+    z-index: 900;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    opacity: 0;
+    transform: translateY(-100%);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .running-total-bar.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .running-total-bar .label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #666;
+  }
+  .running-total-bar .total {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--paper);
+    font-variant-numeric: tabular-nums;
+    transition: color 0.4s ease;
+  }
+  .running-total-bar .total.shifted {
+    color: var(--red-glow);
+  }
+  .running-total-bar .total-label-shift {
+    font-size: 0.55rem;
+    color: var(--red);
+    letter-spacing: 0.15em;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    position: absolute;
+    right: 1.5rem;
+    top: 33px;
+  }
+  .running-total-bar .total-label-shift.visible {
+    opacity: 1;
+  }
+
+  /* ============ RECEIPT ============ */
+  .receipt-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 5rem 1rem 8rem;
+    min-height: 100vh;
+  }
+
+  .receipt {
+    width: 440px;
+    max-width: 95vw;
+    background: var(--paper);
+    padding: 2.5rem 2rem 3rem;
+    position: relative;
+    box-shadow:
+      0 0 60px rgba(0,0,0,0.5),
+      0 0 120px rgba(0,0,0,0.3),
+      inset 0 0 80px rgba(0,0,0,0.03);
+    font-family: 'Courier Prime', monospace;
+    color: var(--ink);
+    font-size: 0.82rem;
+    line-height: 1.7;
+  }
+
+  /* Torn top */
+  .receipt::before {
+    content: '';
+    position: absolute;
+    top: -12px; left: 0; right: 0; height: 14px;
+    background: var(--paper);
+    mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 440 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 14 Q5 0 10 10 Q15 2 20 12 Q25 1 30 11 Q35 3 40 13 Q45 0 50 10 Q55 4 60 12 Q65 1 70 11 Q75 2 80 13 Q85 0 90 10 Q95 3 100 12 Q105 1 110 11 Q115 4 120 13 Q125 0 130 10 Q135 2 140 12 Q145 1 150 11 Q155 3 160 13 Q165 0 170 10 Q175 4 180 12 Q185 1 190 11 Q195 2 200 13 Q205 0 210 10 Q215 3 220 12 Q225 1 230 11 Q235 4 240 13 Q245 0 250 10 Q255 2 260 12 Q265 1 270 11 Q275 3 280 13 Q285 0 290 10 Q295 4 300 12 Q305 1 310 11 Q315 2 320 13 Q325 0 330 10 Q335 3 340 12 Q345 1 350 11 Q355 4 360 13 Q365 0 370 10 Q375 2 380 12 Q385 1 390 11 Q395 3 400 13 Q405 0 410 10 Q415 2 420 14 Q425 1 430 11 Q435 3 440 14 L440 14 L0 14Z' fill='white'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 440 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 14 Q5 0 10 10 Q15 2 20 12 Q25 1 30 11 Q35 3 40 13 Q45 0 50 10 Q55 4 60 12 Q65 1 70 11 Q75 2 80 13 Q85 0 90 10 Q95 3 100 12 Q105 1 110 11 Q115 4 120 13 Q125 0 130 10 Q135 2 140 12 Q145 1 150 11 Q155 3 160 13 Q165 0 170 10 Q175 4 180 12 Q185 1 190 11 Q195 2 200 13 Q205 0 210 10 Q215 3 220 12 Q225 1 230 11 Q235 4 240 13 Q245 0 250 10 Q255 2 260 12 Q265 1 270 11 Q275 3 280 13 Q285 0 290 10 Q295 4 300 12 Q305 1 310 11 Q315 2 320 13 Q325 0 330 10 Q335 3 340 12 Q345 1 350 11 Q355 4 360 13 Q365 0 370 10 Q375 2 380 12 Q385 1 390 11 Q395 3 400 13 Q405 0 410 10 Q415 2 420 14 Q425 1 430 11 Q435 3 440 14 L440 14 L0 14Z' fill='white'/%3E%3C/svg%3E");
+  }
+
+  /* Paper texture */
+  .receipt::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.008) 2px, rgba(0,0,0,0.008) 3px);
+    pointer-events: none;
+  }
+
+  .stain {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(180,160,120,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .stain-1 { width: 120px; height: 100px; top: 15%; right: 5%; }
+  .stain-2 { width: 80px; height: 90px; bottom: 30%; left: 8%; transform: rotate(20deg); }
+
+  .watermark {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 3.5rem; font-weight: 700; letter-spacing: 0.3em;
+    color: rgba(139,26,26,0.04);
+    white-space: nowrap; pointer-events: none; z-index: 1;
+  }
+
+  /* ============ HEADER ============ */
+  .header {
+    text-align: center;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px dashed var(--ink-light);
+    margin-bottom: 1.2rem;
+  }
+  .header .store-name { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.15em; }
+  .header .sub { font-size: 0.7rem; color: var(--ink-light); letter-spacing: 0.08em; margin-top: 0.25rem; }
+
+  .section-label {
+    text-align: center; font-size: 0.65rem;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--ink-light); margin: 1.5rem 0 0.8rem;
+  }
+
+  .divider {
+    text-align: center; color: var(--ink-light);
+    letter-spacing: 0.2em; margin: 1rem 0; font-size: 0.75rem;
+  }
+
+  /* ============ LINE ITEMS ============ */
+  .line-item {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 0.2rem 0;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    cursor: pointer;
+    position: relative;
+    border-radius: 2px;
+  }
+  .line-item:hover { background: rgba(0,0,0,0.025); }
+  .line-item.visible { opacity: 1; transform: translateY(0); }
+  .line-item .item-name { flex-shrink: 0; padding-right: 0.5rem; font-size: 0.78rem; }
+  .line-item .dots { flex: 1; border-bottom: 1px dotted rgba(0,0,0,0.2); margin: 0 0.3rem; min-width: 15px; position: relative; top: -3px; }
+  .line-item .price { font-weight: 700; white-space: nowrap; font-size: 0.82rem; min-width: 70px; text-align: right; }
+
+  /* Click hint */
+  .line-item::after {
+    content: 'tap to reveal';
+    position: absolute;
+    right: 0; top: -16px;
+    font-size: 0.55rem;
+    color: var(--ink-light);
+    letter-spacing: 0.1em;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .line-item:hover::after { opacity: 0.6; }
+  .line-item.expanded::after { opacity: 0; }
+
+  /* ============ QUOTE POPOUT ============ */
+  .quote-box {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease, padding 0.3s ease, opacity 0.4s ease;
+    opacity: 0;
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+    color: var(--red);
+    line-height: 1.5;
+    padding: 0 0.5rem;
+    border-left: 2px solid transparent;
+    margin-bottom: 0;
+  }
+  .quote-box.open {
+    max-height: 200px;
+    opacity: 1;
+    padding: 0.6rem 0.8rem;
+    border-left-color: var(--red);
+    margin-bottom: 0.4rem;
+  }
+  .quote-source {
+    display: block;
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.6rem;
+    color: var(--ink-light);
+    margin-top: 0.3rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* ============ SECTION STYLES ============ */
+  .item-sub {
+    font-size: 0.68rem; color: var(--ink-light);
+    padding-left: 1.2rem; padding-bottom: 0.2rem;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .item-sub.visible { opacity: 1; transform: translateY(0); }
+
+  .price-zero { color: var(--ink-light); font-style: italic; font-weight: 400; }
+  .price-heavy { font-size: 0.9rem; color: var(--red); font-weight: 700; }
+  .price-blank { color: var(--red); letter-spacing: 0.15em; }
+
+  /* Classification */
+  .classification {
+    text-align: center; font-size: 1.1rem; font-weight: 700;
+    letter-spacing: 0.2em; color: var(--red);
+    margin: 1.2rem 0 0.5rem;
+    opacity: 0; transform: scale(0.95);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+  .classification.visible { opacity: 1; transform: scale(1); }
+  .red-underline {
+    display: block; width: 0; height: 2px;
+    background: var(--red); margin: 0.3rem auto 0;
+    transition: width 1.5s ease 0.5s;
+  }
+  .classification.visible .red-underline { width: 80%; }
+
+  /* ============ FOOTER ============ */
+  .footer {
+    border-top: 1px dashed var(--ink-light);
+    margin-top: 1.5rem; padding-top: 1rem; text-align: center;
+    opacity: 0; transition: opacity 0.8s ease;
+  }
+  .footer.visible { opacity: 1; }
+  .footer .balance { font-size: 1rem; font-weight: 700; letter-spacing: 0.15em; margin-bottom: 0.8rem; }
+  .footer .thanks { font-size: 0.72rem; color: var(--ink-light); letter-spacing: 0.1em; line-height: 1.6; }
+
+  /* ============ PAY BUTTON ============ */
+  .pay-section {
+    margin-top: 1.8rem; text-align: center;
+    opacity: 0; transition: opacity 0.8s ease;
+  }
+  .pay-section.visible { opacity: 1; }
+
+  .pay-btn {
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.8rem; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    border: none; padding: 0.9rem 2.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .pay-btn:hover { background: var(--red); }
+  .pay-btn:active { transform: scale(0.97); }
+
+  .pay-btn.failing {
+    animation: glitch 0.1s linear infinite;
+  }
+  .pay-btn.failed {
+    background: transparent;
+    border: 1px dashed var(--red);
+    color: var(--red);
+    cursor: default;
+    animation: none;
+  }
+
+  @keyframes glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1px, -2px); }
+    80% { transform: translate(1px, 2px); }
+    100% { transform: translate(0); }
+  }
+
+  .pay-error {
+    font-family: 'Caveat', cursive;
+    color: var(--red);
+    font-size: 1rem;
+    margin-top: 1rem;
+    opacity: 0;
+    transition: opacity 1s ease;
+    line-height: 1.6;
+  }
+  .pay-error.visible { opacity: 1; }
+
+  /* ============ HANDWRITTEN ============ */
+  .handwritten {
+    font-family: 'Caveat', cursive;
+    color: var(--red); font-size: 1.6rem;
+    text-align: center; margin-top: 2rem; padding-bottom: 1rem;
+    opacity: 0; transition: opacity 2s ease;
+    position: relative; z-index: 2;
+  }
+  .handwritten.visible { opacity: 1; }
+
+  /* ============ ELAPSED TIMER ============ */
+  .elapsed-timer {
+    position: fixed;
+    bottom: 1.2rem; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.6rem;
+    color: #444;
+    letter-spacing: 0.15em;
+    z-index: 900;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .elapsed-timer.visible { opacity: 1; }
+  .elapsed-timer .timer-val {
+    font-size: 0.85rem;
+    color: #666;
+    display: block;
+    margin-top: 0.2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============ BURN EDGE ============ */
+  .burn-edge {
+    position: absolute;
+    bottom: -2px; left: 0; right: 0; height: 80px;
+    background: linear-gradient(to bottom, transparent 0%, rgba(42,26,10,0.1) 30%, rgba(42,26,10,0.4) 60%, rgba(20,10,2,0.85) 80%, #0a0a0a 100%);
+    pointer-events: none; z-index: 5;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 500px) {
+    .receipt { padding: 1.5rem 1.2rem 2rem; font-size: 0.72rem; }
+    .header .store-name { font-size: 1.1rem; }
+    .handwritten { font-size: 1.3rem; }
+    .line-item .item-name { font-size: 0.7rem; }
+    .line-item .price { font-size: 0.74rem; min-width: 55px; }
+    .running-total-bar { padding: 0 1rem; }
+    .quote-box { font-size: 0.85rem; }
+  }
+
+  @media print {
+    body { background: white; }
+    .intro-overlay, .running-total-bar, .elapsed-timer { display: none; }
+    .receipt { box-shadow: none; }
+    .line-item, .item-sub, .classification, .handwritten, .footer, .pay-section { opacity: 1 !important; transform: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== INTRO ========== -->
+<div class="intro-overlay" id="intro">
+  <div class="intro-text">
+    Every transaction leaves a record.<br>
+    Not every cost appears on the bill.
+  </div>
+  <div class="intro-cta" id="enterBtn">Enter</div>
+</div>
+
+<!-- ========== RUNNING TOTAL ========== -->
+<div class="running-total-bar" id="totalBar">
+  <span class="label">Running Total</span>
+  <span class="total" id="totalValue">$0.00</span>
+  <span class="total-label-shift" id="totalShiftLabel">WHAT IS THE REAL COST?</span>
+</div>
+
+<!-- ========== ELAPSED TIMER ========== -->
+<div class="elapsed-timer" id="elapsedTimer">
+  TIME SPENT LOOKING
+  <span class="timer-val" id="timerVal">0:00</span>
+</div>
+
+<!-- ========== RECEIPT ========== -->
+<div class="receipt-wrapper">
+  <div class="receipt" id="receipt">
+    <div class="stain stain-1"></div>
+    <div class="stain stain-2"></div>
+    <div class="watermark">UNPAID</div>
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="store-name">CANADA</div>
+      <div class="sub">CUSTOMER COPY</div>
+      <div class="sub">TRANSACTION SUMMARY</div>
+      <div class="sub">Date: Ongoing</div>
+    </div>
+
+    <!-- SECTION 1: GROCERIES -->
+    <div class="section-label" data-reveal>— NORTHERN GROCERIES —</div>
+
+    <div class="line-item" data-reveal data-cost="28.49" data-quote="In Nunavut, a jug of milk can cost what a family in Toronto pays for an entire cart of groceries." data-source="Northern Food Allowance context">
+      <span class="item-name">Milk 4L</span><span class="dots"></span><span class="price">$28.49</span>
+    </div>
+    <div class="quote-box" id="q1"></div>
+
+    <div class="line-item" data-reveal data-cost="16.79" data-quote="Nutrition North was meant to lower costs. For many families, it changed nothing." data-source="Nutrition North Canada audits">
+      <span class="item-name">Bread (white, 1 loaf)</span><span class="dots"></span><span class="price">$16.79</span>
+    </div>
+    <div class="quote-box" id="q2"></div>
+
+    <div class="line-item" data-reveal data-cost="26.99" data-quote="Food insecurity in Nunavut is eight times the national average." data-source="PROOF, University of Toronto">
+      <span class="item-name">Cheese 500g</span><span class="dots"></span><span class="price">$26.99</span>
+    </div>
+    <div class="quote-box" id="q3"></div>
+
+    <div class="line-item" data-reveal data-cost="19.49" data-quote="Children are going to school hungry. That is not an accident. That is a policy outcome." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">Ground beef 1lb</span><span class="dots"></span><span class="price">$19.49</span>
+    </div>
+    <div class="quote-box" id="q4"></div>
+
+    <div class="line-item" data-reveal data-cost="72.19" data-quote="A mother in Attawapiskat reported diluting formula with water to make it last." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">Infant formula</span><span class="dots"></span><span class="price">$72.19</span>
+    </div>
+    <div class="quote-box" id="q5"></div>
+
+    <div class="line-item" data-reveal data-cost="104.99" data-quote="Over 100 First Nations communities were under long-term boil water advisories. Clean water is not a luxury." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">Bottled water 24pk</span><span class="dots"></span><span class="price">$104.99</span>
+    </div>
+    <div class="quote-box" id="q6"></div>
+
+    <div class="line-item" data-reveal data-cost="18.29" data-quote="When an apple costs three dollars, fruit becomes a privilege, not a food group." data-source="Northern Food Allowance context">
+      <span class="item-name">Apples (bag of 6)</span><span class="dots"></span><span class="price">$18.29</span>
+    </div>
+    <div class="quote-box" id="q7"></div>
+
+    <div class="divider" data-reveal>· · · · · · · · · · · · · · · · · · · ·</div>
+
+    <!-- SECTION 2: SERVICES -->
+    <div class="section-label" data-reveal data-shift="true">— SERVICES RENDERED —</div>
+
+    <div class="line-item" data-reveal data-cost="0" data-quote="Some communities have been under boil water advisories for over twenty years. An entire generation has grown up without clean tap water." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">Boil water advisory (yr)</span><span class="dots"></span><span class="price price-zero">$0.00</span>
+    </div>
+    <div class="quote-box"></div>
+
+    <div class="line-item" data-reveal data-cost="0" data-quote="There is no psychiatric facility in all of Nunavut. The nearest help is a plane ride away, if the weather allows it." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">Mental health counsellor</span><span class="dots"></span><span class="price price-zero">$0.00</span>
+    </div>
+    <div class="quote-box"></div>
+    <div class="item-sub" data-reveal>(nearest: 600 km away)</div>
+
+    <div class="line-item" data-reveal data-cost="0" data-quote="On-reserve schools receive roughly 30 percent less funding per student. The gap is not accidental." data-source="Parliamentary Budget Officer, 2016">
+      <span class="item-name">School funding/child (on-reserve)</span><span class="dots"></span><span class="price">$6,900</span>
+    </div>
+    <div class="quote-box"></div>
+
+    <div class="line-item" data-reveal data-cost="0" data-quote="Every dollar withheld from a child's education is a decision made in an office far from that child's classroom." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">School funding/child (off-reserve)</span><span class="dots"></span><span class="price">$12,300</span>
+    </div>
+    <div class="quote-box"></div>
+
+    <div class="line-item" data-reveal data-cost="0" data-quote="In the weeks before a cluster of youth suicides in Attawapiskat, calls for help went unanswered. The crisis line was overwhelmed." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">Youth crisis hotline</span><span class="dots"></span><span class="price price-zero">47 min hold</span>
+    </div>
+    <div class="quote-box"></div>
+
+    <div class="line-item" data-reveal data-cost="0" data-quote="Water is life. Without clean water, everything else is a secondary conversation." data-source="All Our Relations, Tanya Talaga">
+      <span class="item-name">Clean drinking water</span><span class="dots"></span><span class="price price-zero">PENDING</span>
+    </div>
+    <div class="quote-box"></div>
+
+    <div class="divider" data-reveal>· · · · · · · · · · · · · · · · · · · ·</div>
+
+    <!-- SECTION 3: FINAL CHARGES -->
+    <div class="section-label" data-reveal>— FINAL CHARGES —</div>
+
+    <div class="section-crisis">
+      <div class="line-item" data-reveal data-cost="0" data-quote="These women and girls are not statistics. They are daughters, mothers, sisters, aunties. They are loved and they are missed." data-source="MMIWG Final Report, 2019">
+        <span class="item-name">Missing & murdered women, girls</span><span class="dots"></span><span class="price price-heavy">1,181+</span>
+      </div>
+      <div class="quote-box"></div>
+
+      <div class="line-item" data-reveal data-cost="0" data-quote="The 231 Calls for Justice are not suggestions. They are legal imperatives. They call on all levels of government and all Canadians to act." data-source="MMIWG Final Report, 2019">
+        <span class="item-name">Calls for Justice (issued)</span><span class="dots"></span><span class="price price-heavy">231</span>
+      </div>
+      <div class="quote-box"></div>
+
+      <div class="line-item" data-reveal data-cost="0" data-quote="Years after the inquiry concluded, the majority of the 231 Calls for Justice remain unimplemented. The report sits. The violence continues." data-source="MMIWG Progress Assessment">
+        <span class="item-name">Calls for Justice (acted on)</span><span class="dots"></span><span class="price price-blank">_ _ . _ _</span>
+      </div>
+      <div class="quote-box"></div>
+
+      <div class="line-item" data-reveal data-cost="0" data-quote="Indigenous children represent over half of all children in foster care in Canada, despite making up less than 8 percent of the child population." data-source="Statistics Canada / MMIWG context">
+        <span class="item-name">Indigenous children in care</span><span class="dots"></span><span class="price price-heavy">52.2%</span>
+      </div>
+      <div class="quote-box"></div>
+
+      <div class="line-item" data-reveal data-cost="0" data-quote="The youth suicide rate among Inuit is among the highest in the world. These are not distant numbers. These are children." data-source="All Our Relations, Tanya Talaga">
+        <span class="item-name">Youth suicide rate vs. national</span><span class="dots"></span><span class="price price-heavy">5 - 6×</span>
+      </div>
+      <div class="quote-box"></div>
+
+      <div class="classification" data-reveal>
+        INQUIRY FINDING: DELIBERATE. SYSTEMATIC. ONGOING.
+        <span class="red-underline"></span>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer" data-reveal>
+      <div class="balance">BALANCE DUE: UNPAID</div>
+      <div class="thanks">THANK YOU FOR YOUR<br>PATIENCE.</div>
+    </div>
+
+    <!-- PAY BUTTON -->
+    <div class="pay-section" data-reveal>
+      <button class="pay-btn" id="payBtn">SETTLE BALANCE</button>
+      <div class="pay-error" id="payError"></div>
+    </div>
+
+    <!-- HANDWRITTEN -->
+    <div class="handwritten" data-reveal id="finalLine">
+      How long do we wait?
+    </div>
+
+    <div class="burn-edge"></div>
+  </div>
+</div>
+
+<script>
+  // ============ STATE ============
+  let started = false;
+  let runningTotal = 0;
+  let hasShifted = false;
+  let startTime = null;
+  let timerInterval = null;
+  let payClickCount = 0;
+
+  const intro = document.getElementById('intro');
+  const enterBtn = document.getElementById('enterBtn');
+  const totalBar = document.getElementById('totalBar');
+  const totalValue = document.getElementById('totalValue');
+  const totalShiftLabel = document.getElementById('totalShiftLabel');
+  const elapsedTimer = document.getElementById('elapsedTimer');
+  const timerVal = document.getElementById('timerVal');
+  const payBtn = document.getElementById('payBtn');
+  const payError = document.getElementById('payError');
+
+  // ============ ENTER ============
+  enterBtn.addEventListener('click', () => {
+    intro.classList.add('hidden');
+    setTimeout(() => {
+      started = true;
+      totalBar.classList.add('visible');
+      elapsedTimer.classList.add('visible');
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 1000);
+      initReveal();
+      initClickQuotes();
+    }, 800);
+  });
+
+  // ============ TIMER ============
+  function updateTimer() {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    timerVal.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  // ============ SCROLL REVEAL + RUNNING TOTAL ============
+  function initReveal() {
+    const els = document.querySelectorAll('[data-reveal]');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+
+          // Add cost to running total
+          const cost = parseFloat(entry.target.dataset.cost);
+          if (!isNaN(cost) && cost > 0) {
+            animateTotal(cost);
+          }
+
+          // Check if we've shifted to section 2
+          if (entry.target.dataset.shift === 'true' && !hasShifted) {
+            hasShifted = true;
+            totalValue.classList.add('shifted');
+            totalShiftLabel.classList.add('visible');
+          }
+
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
+
+    els.forEach((el, i) => {
+      el.style.transitionDelay = `${i * 0.06}s`;
+      observer.observe(el);
+    });
+  }
+
+  // ============ ANIMATE TOTAL ============
+  let infiniteStarted = false;
+  let displayTotal = 0;
+  let groceryItemsRevealed = 0;
+  const totalGroceryItems = 7;
+
+  function animateTotal(addAmount) {
+    const target = runningTotal + addAmount;
+    const start = runningTotal;
+    const duration = 600;
+    const startT = performance.now();
+
+    function tick(now) {
+      const progress = Math.min((now - startT) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      displayTotal = start + (target - start) * eased;
+      totalValue.textContent = '$' + displayTotal.toFixed(2);
+      if (progress < 1) requestAnimationFrame(tick);
+      else {
+        groceryItemsRevealed++;
+        if (groceryItemsRevealed >= totalGroceryItems && !infiniteStarted) {
+          startInfiniteCounter();
+        }
+      }
+    }
+
+    requestAnimationFrame(tick);
+    runningTotal = target;
+  }
+
+  // ============ INFINITE COUNTER ============
+  function startInfiniteCounter() {
+    infiniteStarted = true;
+    let rate = 0.03;
+    const maxRate = 2.8;
+    const acceleration = 1.0008;
+    let lastTime = performance.now();
+
+    function countUp(now) {
+      const dt = (now - lastTime) / 16.67;
+      lastTime = now;
+      displayTotal += rate * dt;
+      rate = Math.min(rate * acceleration, maxRate);
+      totalValue.textContent = '$' + displayTotal.toFixed(2);
+      requestAnimationFrame(countUp);
+    }
+
+    requestAnimationFrame(countUp);
+  }
+
+  // ============ CLICK-TO-REVEAL QUOTES ============
+  function initClickQuotes() {
+    const items = document.querySelectorAll('.line-item[data-quote]');
+
+    items.forEach(item => {
+      const quoteBox = item.nextElementSibling;
+      if (!quoteBox || !quoteBox.classList.contains('quote-box')) return;
+
+      item.addEventListener('click', () => {
+        // Toggle
+        if (quoteBox.classList.contains('open')) {
+          quoteBox.classList.remove('open');
+          item.classList.remove('expanded');
+          return;
+        }
+
+        // Close all others first
+        document.querySelectorAll('.quote-box.open').forEach(q => q.classList.remove('open'));
+        document.querySelectorAll('.line-item.expanded').forEach(li => li.classList.remove('expanded'));
+
+        // Open this one
+        const quote = item.dataset.quote;
+        const source = item.dataset.source;
+        quoteBox.innerHTML = `"${quote}" <span class="quote-source">— ${source}</span>`;
+        quoteBox.classList.add('open');
+        item.classList.add('expanded');
+      });
+    });
+  }
+
+  // ============ PAY BUTTON ============
+  const payMessages = [
+    "TRANSACTION DECLINED.",
+    "ERROR: DEBT PREDATES CONFEDERATION.",
+    "THIS BALANCE CANNOT BE SETTLED WITH MONEY.",
+    "PAYMENT METHOD: ACCOUNTABILITY. NOT FOUND.",
+    "RECEIPT CANNOT BE DISCARDED."
+  ];
+
+  payBtn.addEventListener('click', () => {
+    if (payBtn.classList.contains('failed')) return;
+
+    payBtn.classList.add('failing');
+
+    setTimeout(() => {
+      payBtn.classList.remove('failing');
+
+      if (payClickCount < payMessages.length) {
+        payError.textContent = payMessages[payClickCount];
+        payError.classList.add('visible');
+        payClickCount++;
+      }
+
+      if (payClickCount >= payMessages.length) {
+        payBtn.textContent = 'BALANCE: UNPAID';
+        payBtn.classList.add('failed');
+      }
+    }, 800);
+  });
+
+  // ============ SCROLL FALLBACK ============
+  window.addEventListener('scroll', () => {
+    if (!intro.classList.contains('hidden')) {
+      intro.classList.add('hidden');
+      setTimeout(() => {
+        started = true;
+        totalBar.classList.add('visible');
+        elapsedTimer.classList.add('visible');
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 1000);
+        initReveal();
+        initClickQuotes();
+      }, 400);
+    }
+  });
+</script>
+
+</body>
+</html>
